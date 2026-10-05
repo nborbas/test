@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hello, D3</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<style>
+  :root {
+    color-scheme: light;
+    --page: #f9f9f7;
+    --surface-1: #fcfcfb;
+    --text-primary: #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted: #898781;
+    --grid: #e1e0d9;
+    --baseline: #c3c2b7;
+    --border: rgba(11, 11, 11, 0.10);
+    --series-1: #2a78d6;
+    --series-1-soft: #cde2fb;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --page: #0d0d0d;
+      --surface-1: #1a1a19;
+      --text-primary: #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted: #898781;
+      --grid: #2c2c2a;
+      --baseline: #383835;
+      --border: rgba(255, 255, 255, 0.10);
+      --series-1: #3987e5;
+      --series-1-soft: #184f95;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --page: #0d0d0d;
+    --surface-1: #1a1a19;
+    --text-primary: #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted: #898781;
+    --grid: #2c2c2a;
+    --baseline: #383835;
+    --border: rgba(255, 255, 255, 0.10);
+    --series-1: #3987e5;
+    --series-1-soft: #184f95;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--page);
+    color: var(--text-primary);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    line-height: 1.4;
+  }
+  main {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 40px 16px 56px;
+  }
+  .card {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+  }
+  .headline {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0 2px;
+    margin: 0 0 4px;
+    font-size: clamp(40px, 11vw, 76px);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    min-height: 1.2em;
+  }
+  .headline span {
+    display: inline-block;
+    transition: color 160ms ease;
+  }
+  .headline span.space { width: 0.3em; }
+  .headline span.lit { color: var(--series-1); }
+  .subtitle {
+    text-align: center;
+    color: var(--text-secondary);
+    margin: 0 0 24px;
+    font-size: 15px;
+  }
+  .chart-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+  .chart-title { font-size: 15px; font-weight: 600; margin: 0; }
+  button {
+    font: inherit;
+    font-size: 13px;
+    color: var(--text-primary);
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 12px;
+    cursor: pointer;
+  }
+  button:hover { background: var(--grid); }
+  .chart { position: relative; }
+  svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .axis text { fill: var(--text-muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .axis .domain { display: none; }
+  .axis line { stroke: none; }
+  .x-axis text { fill: var(--text-secondary); font-size: 14px; font-weight: 600; }
+  .grid line { stroke: var(--grid); stroke-width: 1; }
+  .grid .domain { display: none; }
+  .baseline { stroke: var(--baseline); stroke-width: 1; }
+  .bar { fill: var(--series-1); transition: opacity 160ms ease; }
+  .bars.dim .bar:not(.active) { opacity: 0.35; }
+  .value { fill: var(--text-primary); font-size: 12px; font-weight: 600; text-anchor: middle; }
+  .hit { fill: transparent; cursor: default; }
+  .tooltip {
+    position: absolute;
+    pointer-events: none;
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 13px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    opacity: 0;
+    transform: translate(10px, -50%);
+    transition: opacity 120ms ease;
+    white-space: nowrap;
+  }
+  .tooltip.flip { transform: translate(calc(-100% - 10px), -50%); }
+  .tooltip .k { color: var(--text-secondary); }
+  .tooltip .v { font-weight: 600; }
+  details { margin-top: 16px; font-size: 13px; color: var(--text-secondary); }
+  summary { cursor: pointer; }
+  table { border-collapse: collapse; margin-top: 8px; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 4px 16px 4px 0; border-bottom: 1px solid var(--grid); }
+  th { color: var(--text-muted); font-weight: 500; }
+  td { color: var(--text-primary); }
+</style>
+</head>
+<body>
+<main>
+  <div class="card">
+    <h1 class="headline" id="headline" aria-label="Hello, World!"></h1>
+    <p class="subtitle">How often each letter appears in “Hello, World!”</p>
+
+    <div class="chart-head">
+      <h2 class="chart-title">Letter count</h2>
+      <button id="replay" type="button">↻ Replay</button>
+    </div>
+    <div class="chart" id="chart">
+      <div class="tooltip" id="tooltip" role="status"></div>
+    </div>
+
+    <details>
+      <summary>View as table</summary>
+      <table id="table"><thead><tr><th>Letter</th><th>Count</th></tr></thead><tbody></tbody></table>
+    </details>
+  </div>
+</main>
+
+<script>
+  const PHRASE = "Hello, World!";
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // Data: letter frequencies, most frequent first, ties in order of first appearance.
+  const letters = PHRASE.toLowerCase().replace(/[^a-z]/g, "").split("");
+  const data = d3.rollups(letters, v => v.length, d => d)
+    .map(([letter, count]) => ({ letter, count, first: letters.indexOf(letter) }))
+    .sort((a, b) => d3.descending(a.count, b.count) || d3.ascending(a.first, b.first));
+
+  // Table view
+  d3.select("#table tbody").selectAll("tr").data(data).join("tr")
+    .html(d => `<td>${d.letter.toUpperCase()}</td><td>${d.count}</td>`);
+
+  // Headline: one span per character so letters can drop in and light up.
+  const headline = d3.select("#headline");
+  const chars = headline.selectAll("span")
+    .data(PHRASE.split("").map((c, i) => ({ c, i, letter: c.toLowerCase() })))
+    .join("span")
+    .attr("aria-hidden", "true")
+    .classed("space", d => d.c === " ")
+    .text(d => d.c === " " ? " " : d.c);
+
+  // Chart geometry
+  const width = 680, height = 300;
+  const margin = { top: 24, right: 8, bottom: 32, left: 32 };
+  const innerW = width - margin.left - margin.right;
+  const innerH = height - margin.top - margin.bottom;
+
+  const x = d3.scaleBand().domain(data.map(d => d.letter)).range([0, innerW]).paddingInner(0.35).paddingOuter(0.2);
+  const y = d3.scaleLinear().domain([0, d3.max(data, d => d.count)]).nice().range([innerH, 0]);
+
+  const svg = d3.select("#chart").append("svg")
+    .attr("viewBox", `0 0 ${width} ${height}`)
+    .attr("role", "img")
+    .attr("aria-label", "Bar chart of letter counts: " + data.map(d => `${d.letter.toUpperCase()} ${d.count}`).join(", "));
+  const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+
+  const yTicks = y.ticks(3);
+  g.append("g").attr("class", "grid")
+    .call(d3.axisLeft(y).tickValues(yTicks).tickSize(-innerW).tickFormat(""));
+  g.append("g").attr("class", "axis")
+    .call(d3.axisLeft(y).tickValues(yTicks).tickFormat(d3.format("d")).tickPadding(8));
+  g.append("g").attr("class", "axis x-axis").attr("transform", `translate(0,${innerH})`)
+    .call(d3.axisBottom(x).tickFormat(d => d.toUpperCase()).tickPadding(10));
+
+  // Bar with 4px rounded top, square at the baseline.
+  const R = 4;
+  function barPath(d, h) {
+    const x0 = x(d.letter), w = x.bandwidth(), y0 = innerH, y1 = innerH - h;
+    const r = Math.min(R, h, w / 2);
+    if (h <= 0) return `M${x0},${y0}h${w}v0h${-w}Z`;
+    return `M${x0},${y0}V${y1 + r}Q${x0},${y1} ${x0 + r},${y1}H${x0 + w - r}Q${x0 + w},${y1} ${x0 + w},${y1 + r}V${y0}Z`;
+  }
+
+  const barsG = g.append("g").attr("class", "bars");
+  const bars = barsG.selectAll("path").data(data).join("path").attr("class", "bar");
+  const values = g.append("g").selectAll("text").data(data).join("text")
+    .attr("class", "value")
+    .attr("x", d => x(d.letter) + x.bandwidth() / 2);
+  g.append("line").attr("class", "baseline").attr("x1", 0).attr("x2", innerW).attr("y1", innerH).attr("y2", innerH);
+
+  // Hover: full-height hit targets wider than the bar.
+  const tooltip = d3.select("#tooltip");
+  g.append("g").selectAll("rect").data(data).join("rect")
+    .attr("class", "hit")
+    .attr("x", d => x(d.letter) - x.step() * x.paddingInner() / 2)
+    .attr("width", x.step())
+    .attr("y", 0)
+    .attr("height", innerH)
+    .on("pointerenter pointermove", (event, d) => highlight(d))
+    .on("pointerleave", () => highlight(null));
+
+  function highlight(d) {
+    barsG.classed("dim", !!d);
+    bars.classed("active", b => d && b.letter === d.letter);
+    chars.classed("lit", c => d && c.letter === d.letter);
+    if (!d) { tooltip.style("opacity", 0); return; }
+    const box = svg.node().getBoundingClientRect();
+    const scale = box.width / width;
+    const flip = x(d.letter) > innerW / 2;
+    tooltip
+      .html(`<span class="k">Letter</span> <span class="v">${d.letter.toUpperCase()}</span> · <span class="k">Count</span> <span class="v">${d.count}</span>`)
+      .classed("flip", flip)
+      .style("left", `${(margin.left + x(d.letter) + (flip ? 0 : x.bandwidth())) * scale}px`)
+      .style("top", `${(margin.top + (y(d.count) + innerH) / 2) * scale}px`)
+      .style("opacity", 1);
+  }
+
+  let finaleTimer;
+  function play() {
+    highlight(null);
+    if (finaleTimer) finaleTimer.stop();
+    const charDelay = reduceMotion ? 0 : 55;
+    const charDur = reduceMotion ? 0 : 650;
+    const barStart = reduceMotion ? 0 : PHRASE.length * charDelay + 200;
+    const em = parseFloat(getComputedStyle(headline.node()).fontSize);
+
+    // 1. Letters drop in with a bounce.
+    chars.interrupt()
+      .style("opacity", 0)
+      .style("transform", `translateY(${-0.6 * em}px) rotate(-8deg)`)
+      .transition().delay(d => d.i * charDelay).duration(charDur).ease(d3.easeBackOut.overshoot(2.2))
+      .style("opacity", 1)
+      .style("transform", "translateY(0px) rotate(0deg)");
+
+    // 2. Bars grow from the baseline, staggered left to right.
+    bars.interrupt().attr("d", d => barPath(d, 0))
+      .transition().delay((d, i) => barStart + i * (reduceMotion ? 0 : 90)).duration(reduceMotion ? 0 : 900)
+      .ease(d3.easeElasticOut.amplitude(1).period(0.45))
+      .attrTween("d", d => {
+        const target = innerH - y(d.count);
+        return t => barPath(d, Math.max(0, target * t));
+      });
+
+    // 3. Value labels ride the bar top and count up with it.
+    values.interrupt().style("opacity", 0).attr("y", innerH - 8).text(0)
+      .transition().delay((d, i) => barStart + i * (reduceMotion ? 0 : 90)).duration(reduceMotion ? 0 : 900)
+      .ease(d3.easeElasticOut.amplitude(1).period(0.45))
+      .tween("label", function (d) {
+        const el = d3.select(this);
+        const target = innerH - y(d.count);
+        return t => {
+          el.attr("y", innerH - Math.max(0, target * t) - 8)
+            .style("opacity", Math.min(1, t * 3))
+            .text(Math.round(d.count * Math.min(1, Math.max(0, t))));
+        };
+      });
+
+    // 4. Finale: briefly light up each "L" in the headline — the winner.
+    if (!reduceMotion) {
+      const top = data[0];
+      const finale = barStart + data.length * 90 + 900;
+      finaleTimer = d3.timeout(() => {
+        chars.filter(c => c.letter === top.letter)
+          .classed("lit", true)
+          .transition().delay((c, i) => i * 120).duration(260).ease(d3.easeQuadOut)
+          .style("transform", `translateY(${-0.18 * em}px)`)
+          .transition().duration(420).ease(d3.easeBounceOut)
+          .style("transform", "translateY(0px)")
+          .on("end", function () { d3.select(this).classed("lit", false); });
+      }, finale);
+    }
+  }
+
+  d3.select("#replay").on("click", play);
+  play();
+</script>
+</body>
+</html>
